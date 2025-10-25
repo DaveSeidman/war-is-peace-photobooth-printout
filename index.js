@@ -17,7 +17,7 @@ let isPrinting = false;
 
 app.post("/print", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).send("Missing file upload.");
-
+  console.log('received file');
   // Push file info to queue
   queue.push(req.file.path);
   processQueue();
@@ -44,4 +44,4 @@ async function processQueue() {
   }
 }
 
-app.listen(9000, () => console.log("Print server running on port 9000"));
+app.listen(8000, () => console.log("Print server running on port 8000"));
