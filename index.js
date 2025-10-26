@@ -3,7 +3,6 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import pdfToPrinter from "pdf-to-printer";
-import PDFDocument from "pdfkit";
 
 const { print } = pdfToPrinter;
 
@@ -59,52 +58,23 @@ async function processQueue() {
   const ext = path.extname(filename).toLowerCase();
 
   try {
-    console.log(`🖨️ Preparing ${filename}`);
-
-    // Accept only images
-    if (![".png", ".jpg", ".jpeg"].includes(ext)) {
-      console.warn(`⚠️ Skipping unsupported file type: ${filename}`);
-      isPrinting = false;
-      return processQueue();
-    }
-
-    // Build a precise 4x6in PDF (points = 1/72")
-    const pdfPath = filePath.replace(ext, ".pdf");
-    await new Promise((resolve, reject) => {
-      const doc = new PDFDocument({
-        size: [288, 432],   // 4in x 6in in points
-        margins: { top: 0, left: 0, right: 0, bottom: 0 }
+    console.log(`🖨️ Printing ${filename}`);
+    if ([".png", ".jpg", ".jpeg"].includes(ext)) {
+      await print(filePath, { 
+        scale: "noscale",
+        orientation: "portrait"
       });
-      const out = fs.createWriteStream(pdfPath);
-      out.on("finish", resolve);
-      out.on("error", reject);
-      doc.pipe(out);
-
-      // Each strip is 2in x 6in -> 144 x 432 pt
-      // Left strip
-      doc.image(filePath, 0, 0, { fit: [144, 432], align: "left", valign: "top" } );
-      // Right strip
-      doc.image(filePath, 144, 0, { fit: [144, 432], align: "left", valign: "top" } );
-
-      doc.end();
-    });
-
-    // Print the PDF (drivers are MUCH happier with PDFs)
-    console.log(`🖨️ Printing PDF ${path.basename(pdfPath)}`);
-    await print(pdfPath, {
-      // optional: specify the printer if needed -> printer: "Your Printer Name",
-      scale: "noscale"
-    });
-
-    console.log(`✅ Finished printing ${path.basename(pdfPath)}`);
+    } else {
+      console.warn(`⚠️ Skipping unsupported file type: ${filename}`);
+    }
+    console.log(`✅ Finished printing ${filename}`);
   } catch (err) {
     console.error(`❌ Print error for ${filename}:`, err.message);
   } finally {
-    // Optional cleanup: keep originals for audit, or delete after successful print
+    // optional cleanup after printing
     // fs.unlink(filePath, () => {});
-    // fs.unlink(pdfPath, () => {});
     isPrinting = false;
-    processQueue();
+    processQueue(); // move to next job
   }
 }
 
